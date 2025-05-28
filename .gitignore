@@ -1,3 +1,7 @@
+# user define
+config/device_empf_*.csv
+output/empf*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

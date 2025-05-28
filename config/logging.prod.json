@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "simple": {
+      "format": "%(message)s"
+    },
+    "console": {
+      "format": "%(asctime)s: %(levelname)s: %(name)s: %(message)s"
+    },
+    "file": {
+      "format": "%(asctime)s: %(levelname)s: %(name)s: %(funcName)18s: %(message)s"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "level": "WARNING",
+      "formatter": "console",
+      "stream": "ext://sys.stdout"
+    },
+    "file": {
+      "class": "logging.FileHandler",
+      "level": "WARNING",
+      "formatter": "file",
+      "filename": "%(logfilename)s",
+      "mode": "w"
+    }
+  },
+  "loggers": {
+    "": {
+      "level": "DEBUG",
+      "handlers": ["console", "file"]
+    },
+    "file": {
+      "level": "DEBUG",
+      "handlers": ["file"]
+    },
+    "paramiko": {
+      "level": "WARNING",
+      "handlers": ["console", "file"],
+      "propagate": false
+    },
+    "netmiko": {
+      "level": "WARNING",
+      "handlers": ["console", "file"],
+      "propagate": false
+    }
+  },
+  "root": {
+    "level": "DEBUG",
+    "handlers": ["console", "file"]
+  }
+}

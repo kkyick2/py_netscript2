@@ -1,0 +1,15 @@
+Output for device 172.30.210.71 (n1pneaisn1301)
+==================================================
+
+Command: show clock
+--------------------------------------------------
+*10:49:23.000 HKT Wed May 28 2025
+
+Command: show interface brief
+--------------------------------------------------
+Interface              IP-Address      OK? Method Status                Protocol
+Eth1/1                 172.30.210.71   YES NVRAM  up                    up
+
+Command: show running-config | include hostname
+--------------------------------------------------
+hostname n1pneaisn1301

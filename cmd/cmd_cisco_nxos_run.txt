@@ -1,0 +1,4 @@
+ter len 0
+show run
+show version
+exit

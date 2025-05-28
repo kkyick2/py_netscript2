@@ -1,0 +1,19 @@
+ter len 0
+show inventory
+show switch detail 
+
+show interfaces description
+show interfaces status
+show ip interface brief
+show interfaces trunk
+show etherchannel summary
+show spanning-tree bridge
+show ip route summary
+
+show cdp neighbors | in Total
+show cdp neighbors detail | in Device|Platform|Interface
+show lldp neighbors
+
+show environment stack | in OK
+
+exit

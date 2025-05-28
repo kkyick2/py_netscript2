@@ -1,0 +1,33 @@
+ter len 0
+show run
+show version
+show inventory
+show interface description
+show interface status
+show interface trunk
+!show interface
+show vtp status
+show vlan
+show spanning-tree summary
+show spanning-tree bridge
+show spanning-tree
+show ip interface brief vrf all
+show ip route summary vrf all
+show ip route vrf all
+show ip ospf interface vrf all
+show ip ospf neighbor vrf all
+show ip pim interface vrf all
+show ip pim neighbor vrf all
+show ip arp vrf all
+show mac address-table
+show port-channel summary 
+show clock
+show ntp peer-status 
+show cdp neighbors
+show cdp neighbors detail
+show lldp neighbors
+show lldp neighbors detail 
+show processes cpu sort
+show processes cpu history
+show environment
+exit
