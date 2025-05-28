@@ -1,0 +1,11 @@
+ter len 0
+show clock
+show int desc | in Te1/1/2 
+show int Te1/1/2 link
+show ip route
+show ip bgp
+show ip bgp summary
+show ip route 0.0.0.0
+show ip bgp neighbors 172.20.14.1 received-routes
+show ip bgp neighbors 172.16.14.1 received-routes
+exit

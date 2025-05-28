@@ -11,12 +11,13 @@ import json
 import argparse
 from pathlib import Path
 from netmiko import ConnectHandler, NetMikoAuthenticationException, NetmikoTimeoutException
-version = '20250528'
+version = '20250528_1737'
 
 # Global variables for directory paths and logging
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 LOG_ENV = 'dev'
 LOG_DIR = 'log'
+LOG_DIR_FULL = os.path.join(PARENT_DIR, LOG_DIR)
 CONFIG_DIR = 'config'
 CONFIG_DIR_FULL = os.path.join(PARENT_DIR, CONFIG_DIR)
 OUTPUT_DIR = 'output'
@@ -26,7 +27,7 @@ CMD_DIR_FULL = os.path.join(PARENT_DIR, CMD_DIR)
 DATETIME = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Configure logging using JSON configuration
-def setup_logging(verbose=False):
+def setup_logging(verbose=False, log_suffix=""):
     log_configs = {
         "dev": "logging.dev.json",
         "prod": "logging.prod.json"
@@ -34,8 +35,9 @@ def setup_logging(verbose=False):
     log_name = Path(os.path.basename(__file__)).stem  # filename without extension
     log_config = log_configs.get(LOG_ENV, "logging.dev.json")
     log_config_path = os.path.join(PARENT_DIR, CONFIG_DIR, log_config)
-    log_file_path = os.path.join(PARENT_DIR, LOG_DIR, f'{log_name}_{DATETIME}.log')
-    
+    log_file_path = os.path.join(PARENT_DIR, LOG_DIR, f'{log_name}_{log_suffix}_{DATETIME}.log')
+    os.makedirs(LOG_DIR_FULL, exist_ok=True)
+
     with open(log_config_path, 'r') as f:
         config = json.load(f)
     
@@ -229,31 +231,34 @@ def save_json_output(data, output_base, timestamp):
 def main():
     parser = argparse.ArgumentParser(description="Execute commands on network devices")
     parser.add_argument(
-        "-i", "--input", help="CSV file name as input in config/ directory"
+        "-i", "--input", required=True, help="CSV file name as input in config/ directory"
     )
     parser.add_argument(
-        "-w", "--workers", type=int, default=16, help="Number of parallel device connections"
-    )
-    parser.add_argument(
-        "-o", "--outname", default="result", help="folder name in output/ directory and json output name"
+        "-o", "--outname", default=None, help="folder name in output/ directory and json output name"
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
-        "-j", "--save-json", action="store_true", help="Save output to JSON file in output/ directory"
+        "-json", "--save-json", action="store_true", help="Save output to JSON file in output/ directory"
     )
     parser.add_argument(
-        "-t", "--save-txt", action="store_true", help="Save per-device output to text files in output/ directory"
+        "-txt", "--save-txt", action="store_true", help="Save per-device output to text files in output/ directory"
+    )
+    parser.add_argument(
+        "-w", "--workers", type=int, default=16, help="Number of parallel device connections"
     )
     args = parser.parse_args()
+    # Set default outname to input CSV stem if not provided
+    inname = Path(args.input).stem
+    outname = args.outname if args.outname is not None else inname
 
-    # Setup logging with verbose flag
-    setup_logging(verbose=args.verbose)
+    # Setup logging with verbose flag and input name
+    setup_logging(verbose=args.verbose, log_suffix=inname)
     logger = logging.getLogger(__name__)
 
     # Create output directory for text files if enabled
-    output_dir = os.path.join(OUTPUT_DIR_FULL, f"{args.outname}_{DATETIME}") if args.save_txt else ""
+    output_dir = os.path.join(OUTPUT_DIR_FULL, f"{outname}_{DATETIME}") if args.save_txt else ""
     if args.save_txt:
         os.makedirs(output_dir, exist_ok=True)
         logger.info(f"Output directory created: {output_dir}")
@@ -268,7 +273,7 @@ def main():
 
     # Save JSON output
     if args.save_json:
-        save_json_output(result, args.outname, DATETIME)
+        save_json_output(result, outname, DATETIME)
 
 if __name__ == "__main__":
     main()
