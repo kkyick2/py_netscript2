@@ -1,6 +1,6 @@
 # py_netscript2
 
-This Python script (version `20250528_1737`) uses `Netmiko` to execute commands on network devices concurrently, reading device details from a CSV file and commands from text files. It skips special termination commands (e.g., `exit`, `quit`), saves outputs to JSON and per-device text files, and logs to timestamped files based on a JSON configuration.
+This Python script (version `20250528_1737`) uses `Netmiko` to execute commands on network devices concurrently, reading device details from CSV files and commands from text files. It skips special termination commands (e.g., `exit`, `quit`), saves outputs to JSON and per-device text files, and logs to timestamped files based on a JSON configuration. A wrapper script (`run_batch.py`) enables concurrent execution for multiple CSV files listed in a batch file (`run_batch1.txt`).
 
 ## Folder Structure
 
@@ -9,6 +9,7 @@ py_netscript2/
 ├── readme.md
 ├── src/
 │   ├── 1pyshcmd.py
+│   ├── run_batch.py
 ├── cmd/
 │   ├── cmd_cisco_ios_all.txt
 │   └── cmd_cisco_nxos_all.txt
@@ -16,29 +17,37 @@ py_netscript2/
 │   ├── devices.csv
 │   ├── devices2.csv
 │   ├── devices3.csv
+│   ├── devices4.csv
 │   ├── ...
 │   ├── devices50.csv
+│   ├── run_batch1.txt
 │   └── logging.dev.json
 ├── output/
-│   ├── devices_20250528_173737.json
-│   ├── devices_20250528_173737/
+│   ├── devices2_20250528_190523.json
+│   ├── devices2_20250528_190523/
 │   │   ├── n1pnecint1301.txt
 │   │   └── n1pneaisn1301.txt
-│   ├── devices2_20250528_173737.json
-│   ├── devices2_20250528_173737/
+│   ├── devices4_20250528_190523.json
+│   ├── devices4_20250528_190523/
 │   │   ├── n2pnecint1301.txt
 │   │   └── n2pneaisn1301.txt
+│   ├── devices50_20250528_190523.json
+│   ├── devices50_20250528_190523/
+│   │   ├── n3pnecint1301.txt
+│   │   └── n3pneaisn1301.txt
 └── log/
-    ├── 1pyshcmd_devices_20250528_173737.log
-    ├── 1pyshcmd_devices2_20250528_173737.log
+    ├── 1pyshcmd_devices2_20250528_190523.log
+    ├── 1pyshcmd_devices4_20250528_190523.log
+    ├── 1pyshcmd_devices50_20250528_190523.log
+    ├── run_batch_20250528_190523.log
 ```
 
 - **`readme.md`**: This documentation.
-- **`src/`**: Contains the main script (`1pyshcmd.py`).
+- **`src/`**: Contains the main script (`1pyshcmd.py`) and wrapper script (`run_batch.py`).
 - **`cmd/`**: Contains command files (e.g., `cmd_cisco_ios_all.txt`), each listing commands to execute on a device.
-- **`config/`**: Contains CSV files (e.g., `devices.csv`) and logging configuration (`logging.dev.json`).
-- **`output/`**: Stores JSON output files and text output directories (e.g., `devices_20250528_173737/` with per-device text files).
-- **`log/`**: Stores timestamped log files (e.g., `1pyshcmd_devices_20250528_173737.log`).
+- **`config/`**: Contains CSV files (e.g., `devices2.csv`), a batch file (`run_batch1.txt`), and logging configuration (`logging.dev.json`).
+- **`output/`**: Stores JSON output files and text output directories (e.g., `devices2_20250528_190523/` with per-device text files).
+- **`log/`**: Stores timestamped log files (e.g., `1pyshcmd_devices2_20250528_190523.log`).
 
 ## Global Variables
 
@@ -94,7 +103,7 @@ Each CSV file in `config/` must have the following headers:
 - `cmdfile`: Name of the command file in `cmd/` (e.g., `cmd_cisco_ios_all.txt`).
 - `device_type` (optional): Netmiko device type (defaults to `cisco_ios`).
 
-Example `config/devices.csv`:
+Example `config/devices2.csv`:
 
 ```csv
 username,password,hostname,ip,port,cmdfile
@@ -126,72 +135,112 @@ show running-config | include hostname
 quit  # This will be skipped
 ```
 
-## Usage
+## Batch File Format
 
-Run `1pyshcmd.py` for a single CSV file:
+The batch file `config/run_batch1.txt` lists CSV filenames to process, one per line. Empty lines are ignored.
 
-```bash
-python3 src/1pyshcmd.py -i devices2.csv -w 16 -v -json -txt
+Example `config/run_batch1.txt`:
+
+```
+devices2.csv
+devices4.csv
+devices50.csv
 ```
 
-### Arguments
+## Usage
+
+### Single CSV Execution
+
+Run `pyshcmd.py` for a single CSV file:
+
+```bash
+python3 src/pyshcmd.py -i devices2.csv -w 16 -v -json -txt
+```
+
+**Arguments**:
 
 - `-i/--input`: CSV file in `config/` (required, e.g., `devices2.csv`).
 - `-w/--workers`: Number of concurrent device connections (default: 16).
 - `-o/--outname`: Base name for output folder and JSON file in `output/` (defaults to input CSV name without extension, e.g., `devices2` for `devices2.csv`).
 - `-v/--verbose`: Enable debug-level logging to console.
-- `-json/--save-json`: Save output to a JSON file (e.g., `output/devices2_20250528_173737.json`).
-- `-txt/--save-txt`: Save per-device text files in a timestamped directory (e.g., `output/devices2_20250528_173737/`).
+- `-json/--save-json`: Save output to a JSON file (e.g., `output/devices2_20250528_190523.json`).
+- `-txt/--save-txt`: Save per-device text files in a timestamped directory (e.g., `output/devices2_20250528_190523/`).
 
-### Example Output
+### Batch CSV Execution
 
-**Console** (example, based on May 28, 2025, 17:37 HKT, with `-v`):
+To process multiple CSV files listed in `config/run_batch1.txt` concurrently, use `run_batch.py`:
 
-```
-2025-05-28 17:37:37,123: INFO: __main__: Output directory created: output/devices2_20250528_173737
-2025-05-28 17:37:37,124: DEBUG: __main__: Skipped termination command 'exit' in cmd/cmd_cisco_ios_all.txt
-2025-05-28 17:37:37,124: DEBUG: __main__: Skipped termination command 'quit' in cmd/cmd_cisco_nxos_all.txt
-2025-05-28 17:37:37,125: DEBUG: __main__: Read 3 commands from cmd/cmd_cisco_ios_all.txt
-2025-05-28 17:37:37,125: DEBUG: __main__: Read 3 commands from cmd/cmd_cisco_nxos_all.txt
-2025-05-28 17:37:37,126: DEBUG: __main__: Read 2 devices from config/devices2.csv
-2025-05-28 17:37:37,127: INFO: __main__: ===> 17:37:37.123456 Connection: 172.30.210.11
-2025-05-28 17:37:37,127: INFO: __main__: ===> 17:37:37.123457 Connection: 172.30.210.71
-2025-05-28 17:37:37,223: DEBUG: __main__: <=== 17:37:37.223457 Received: 172.30.210.71 for command: show clock
-2025-05-28 17:37:37,323: DEBUG: __main__: <=== 17:37:37.323457 Received: 172.30.210.71 for command: show interface brief
-2025-05-28 17:37:37,423: DEBUG: __main__: <=== 17:37:37.423457 Received: 172.30.210.71 for command: show running-config | include hostname
-2025-05-28 17:37:37,424: INFO: __main__: Text output saved to output/devices2_20250528_173737/n1pneaisn1301.txt
-2025-05-28 17:37:37,523: DEBUG: __main__: <=== 17:37:37.523456 Received: 172.30.210.11 for command: show clock
-2025-05-28 17:37:37,623: DEBUG: __main__: <=== 17:37:37.623456 Received: 172.30.210.11 for command: show ip interface brief
-2025-05-28 17:37:37,723: DEBUG: __main__: <=== 17:37:37.723456 Received: 172.30.210.11 for command: show running-config | include hostname
-2025-05-28 17:37:37,724: INFO: __main__: Text output saved to output/devices2_20250528_173737/n1pnecint1301.txt
-2025-05-28 17:37:37,725: INFO: __main__: [main] Running time: 0.823456s
-2025-05-28 17:37:37,726: INFO: __main__: JSON output saved to output/devices2_20250528_173737.json
+```bash
+python3 src/run_batch.py
+python src\run_batch.py -b batch_empf_n.txt -txt -json
 ```
 
-**Log File** (`log/1pyshcmd_devices2_20250528_173737.log` excerpt):
+This script:
 
+- Reads `run_batch1.txt` to get CSV filenames.
+- Validates that each CSV exists in `config/`.
+- Executes `1pyshcmd.py` for each CSV concurrently using `ThreadPoolExecutor` (8 concurrent CSV executions).
+- Uses `1pyshcmd.py`’s default output naming (`<csv_stem>_<timestamp>`) and log naming (`1pyshcmd_<csv_stem>_<timestamp>.log`).
+- Logs wrapper activities to `log/run_batch_<timestamp>.log`.
+
+**Output Example** (for `run_batch1.txt` with `devices2.csv`, `devices4.csv`, `devices50.csv`, May 28, 2025, 19:05 HKT):
+
+- JSON files: `output/devices2_20250528_190523.json`, `output/devices4_20250528_190523.json`, `output/devices50_20250528_190523.json`
+- Text directories: `output/devices2_20250528_190523/`, `output/devices4_20250528_190523/`, `output/devices50_20250528_190523/`
+- Log files: `log/1pyshcmd_devices2_20250528_190523.log`, `log/1pyshcmd_devices4_20250528_190523.log`, `log/1pyshcmd_devices50_20250528_190523.log`, `log/run_batch_20250528_190523.log`
+
+### Example Console Output (Single CSV, `1pyshcmd.py` with `-v`)
+
+```bash
+2025-05-28 19:05:23,123: INFO: __main__: Output directory created: output/devices2_20250528_190523
+2025-05-28 19:05:23,124: DEBUG: __main__: Skipped termination command 'exit' in cmd/cmd_cisco_ios_all.txt
+2025-05-28 19:05:23,124: DEBUG: __main__: Skipped termination command 'quit' in cmd/cmd_cisco_nxos_all.txt
+2025-05-28 19:05:23,125: DEBUG: __main__: Read 3 commands from cmd/cmd_cisco_ios_all.txt
+2025-05-28 19:05:23,125: DEBUG: __main__: Read 3 commands from cmd/cmd_cisco_nxos_all.txt
+2025-05-28 19:05:23,126: DEBUG: __main__: Read 2 devices from config/devices2.csv
+2025-05-28 19:05:23,127: INFO: __main__: ===> 19:05:23.123456 Connection: 172.30.210.11
+2025-05-28 19:05:23,127: INFO: __main__: ===> 19:05:23.123457 Connection: 172.30.210.71
+2025-05-28 19:05:23,223: DEBUG: __main__: <=== 19:05:23.223457 Received: 172.30.210.71 for command: show clock
+2025-05-28 19:05:23,323: DEBUG: __main__: <=== 19:05:23.323457 Received: 172.30.210.71 for command: show interface brief
+2025-05-28 19:05:23,423: DEBUG: __main__: <=== 19:05:23.423457 Received: 172.30.210.71 for command: show running-config | include hostname
+2025-05-28 19:05:23,424: INFO: __main__: Text output saved to output/devices2_20250528_190523/n1pneaisn1301.txt
+2025-05-28 19:05:23,523: DEBUG: __main__: <=== 19:05:23.523456 Received: 172.30.210.11 for command: show clock
+2025-05-28 19:05:23,623: DEBUG: __main__: <=== 19:05:23.623456 Received: 172.30.210.11 for command: show ip interface brief
+2025-05-28 19:05:23,723: DEBUG: __main__: <=== 19:05:23.723456 Received: 172.30.210.11 for command: show running-config | include hostname
+2025-05-28 19:05:23,724: INFO: __main__: Text output saved to output/devices2_20250528_190523/n1pnecint1301.txt
+2025-05-28 19:05:23,725: INFO: __main__: [main] Running time: 0.823456s
+2025-05-28 19:05:23,726: INFO: __main__: JSON output saved to output/devices2_20250528_190523.json
 ```
-2025-05-28 17:37:37,123: INFO: __main__: main                  : Output directory created: output/devices2_20250528_173737
-2025-05-28 17:37:37,124: DEBUG: __main__: read_commands         : Skipped termination command 'exit' in cmd/cmd_cisco_ios_all.txt
-2025-05-28 17:37:37,124: DEBUG: __main__: read_commands         : Skipped termination command 'quit' in cmd/cmd_cisco_nxos_all.txt
-2025-05-28 17:37:37,125: DEBUG: __main__: read_commands         : Read 3 commands from cmd/cmd_cisco_ios_all.txt
-2025-05-28 17:37:37,125: DEBUG: __main__: read_commands         : Read 3 commands from cmd/cmd_cisco_nxos_all.txt
-2025-05-28 17:37:37,126: DEBUG: __main__: read_devices          : Read 2 devices from config/devices2.csv
-2025-05-28 17:37:37,127: INFO: __main__: execute_commands      : ===> 17:37:37.123456 Connection: 172.30.210.11
-2025-05-28 17:37:37,127: INFO: __main__: execute_commands      : ===> 17:37:37.123457 Connection: 172.30.210.71
-2025-05-28 17:37:37,223: DEBUG: __main__: execute_commands      : <=== 17:37:37.223457 Received: 172.30.210.71 for command: show clock
-2025-05-28 17:37:37,323: DEBUG: __main__: execute_commands      : <=== 17:37:37.323457 Received: 172.30.210.71 for command: show interface brief
+
+### Example Console Output (Batch Execution, `run_batch.py`)
+
+```bash
+2025-05-28 19:05:23,123: INFO: Read 3 CSV files from config/run_batch1.txt: ['devices2.csv', 'devices4.csv', 'devices50.csv']
+2025-05-28 19:05:23,124: INFO: Processing 3 valid CSV files: ['devices2.csv', 'devices4.csv', 'devices50.csv']
+2025-05-28 19:05:23,125: INFO: Starting execution for devices2.csv
+2025-05-28 19:05:23,126: INFO: Starting execution for devices4.csv
+2025-05-28 19:05:23,127: INFO: Starting execution for devices50.csv
+2025-05-28 19:06:23,456: INFO: Completed execution for devices2.csv
+2025-05-28 19:06:23,457: INFO: Completed execution for devices4.csv
+2025-05-28 19:06:23,458: INFO: Completed execution for devices50.csv
+2025-05-28 19:06:23,459: INFO: Successfully processed devices2.csv
+2025-05-28 19:06:23,460: INFO: Successfully processed devices4.csv
+2025-05-28 19:06:23,461: INFO: Successfully processed devices50.csv
 ```
 
 ## Notes
 
 - **Security**: Storing credentials in CSV files is insecure for production. Use a secrets manager or environment variables.
-- **Error Handling**: Validates CSV headers, port numbers, and command file existence. Skips termination commands (`exit`, `quit`) with `DEBUG` logs. Connection and command errors are logged per device.
-- **Performance**: Text files are generated as each device completes, improving speed for large device lists. The default of 16 workers may need tuning based on system and network capacity.
-- **Logging**: Logs are saved to `log/1pyshcmd_<input_stem>_<timestamp>.log` with detailed formatting. The `-v/--verbose` flag enables `DEBUG` output to the console, including skipped commands and command outputs. `paramiko` logs are suppressed below `WARNING` level.
-- **Version**: The script version is `20250528_1737`.
-- **Output Naming**: The `--outname` argument defaults to the input CSV’s stem (e.g., `devices2` for `devices2.csv`), ensuring intuitive output file and directory names.
+- **Error Handling**: Validates CSV headers, port numbers, and command file existence in `1pyshcmd.py`. `run_batch.py` validates CSV file existence and captures `stdout`/`stderr` for troubleshooting.
+- **Performance**: Concurrent execution with `run_batch.py` speeds up processing of multiple CSVs. The default of 8 CSV workers and 16 device workers per CSV (up to 128 SSH connections) may need tuning based on system and network capacity.
+- **Logging**:
+  - `1pyshcmd.py` logs to `log/1pyshcmd_<csv_stem>_<timestamp>.log`.
+  - `run_batch.py` logs to `log/run_batch_<timestamp>.log` for high-level execution status.
+- **Version**: The `1pyshcmd.py` version is `20250528_1737`.
+- **Output Organization**:
+  - JSON files and text directories are named with the CSV stem (e.g., `devices2_20250528_190523.json`).
+  - Text files are stored in corresponding directories (e.g., `devices2_20250528_190523/n1pnecint1301.txt`).
 - **Extensibility**:
-  - Add `TextFSM` for structured output: `ssh.send_command(command, use_textfsm=True)`.
+  - Add `TextFSM` in `1pyshcmd.py` for structured output: `ssh.send_command(command, use_textfsm=True)`.
   - Implement retries in `execute_commands` for failed commands.
-  - Extend CSV schema for additional `Netmiko` parameters (e.g., `secret`).
+  - Extend `run_batch.py` to support multiple batch files or custom arguments per CSV.

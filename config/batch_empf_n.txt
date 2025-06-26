@@ -1,2 +1,3 @@
 empf_n_cnxosios_run.csv
+empf_n_cnxosios_status.csv
 empf_pnp_cios_ibsbgp.csv
