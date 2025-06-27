@@ -11,7 +11,8 @@ import json
 import argparse
 from pathlib import Path
 from netmiko import ConnectHandler, NetMikoAuthenticationException, NetmikoTimeoutException
-version = '20250626'
+version = '20250627'
+# Fixed --output-structure: option1 (timestamp/name), option2 (name_timestamp); removed run_batch_mp.py; single log file pyshcmd_<timestamp>.log (20250627_1454)
 
 # Global variables for directory paths and logging
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -27,7 +28,7 @@ CMD_DIR_FULL = os.path.join(PARENT_DIR, CMD_DIR)
 DATETIME = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Configure logging using JSON configuration
-def setup_logging(verbose=False, log_suffix=""):
+def setup_logging(verbose=False):
     log_configs = {
         "dev": "logging.dev.json",
         "prod": "logging.prod.json"
@@ -35,7 +36,7 @@ def setup_logging(verbose=False, log_suffix=""):
     log_name = Path(os.path.basename(__file__)).stem
     log_config = log_configs.get(LOG_ENV, "logging.dev.json")
     log_config_path = os.path.join(PARENT_DIR, CONFIG_DIR, log_config)
-    log_file_path = os.path.join(PARENT_DIR, LOG_DIR, f'{log_name}_{log_suffix}_{DATETIME}.log')
+    log_file_path = os.path.join(PARENT_DIR, LOG_DIR, f'{log_name}_{DATETIME}.log')
     os.makedirs(LOG_DIR_FULL, exist_ok=True)
 
     with open(log_config_path, 'r') as f:
@@ -208,10 +209,14 @@ def send_command_to_devices(devices, max_workers=4, output_dir="", save_txt=Fals
     return data
 
 # Save output to JSON
-def save_json_output(data, output_base, timestamp):
+def save_json_output(data, output_base, timestamp, output_structure):
     logger = logging.getLogger(__name__)
     os.makedirs(OUTPUT_DIR_FULL, exist_ok=True)
-    filename = os.path.join(OUTPUT_DIR_FULL, f"{output_base}_{timestamp}.json")
+    if output_structure == "option1":
+        os.makedirs(os.path.join(OUTPUT_DIR_FULL, timestamp), exist_ok=True)
+        filename = os.path.join(OUTPUT_DIR_FULL, timestamp, f"{output_base}.json")
+    else:  # option2
+        filename = os.path.join(OUTPUT_DIR_FULL, f"{output_base}_{timestamp}.json")
     try:
         with open(filename, "w") as f:
             json.dump(data, f, indent=4)
@@ -222,25 +227,32 @@ def save_json_output(data, output_base, timestamp):
 @count_time
 def main(args=None):
     if args is None:
-        parser = argparse.ArgumentParser(description="Execute commands on network devices")
+        parser = argparse.ArgumentParser(description="Execute commands on network devices with configurable output structure")
         parser.add_argument("-i", "--input", required=True, help="CSV file name as input in config/ directory")
-        parser.add_argument("-o", "--outname", default=None, help="folder name in output/ directory and json output name")
+        parser.add_argument("-o", "--outname", default=None, help="Base name for output folder and JSON file")
         parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
         parser.add_argument("-json", "--save-json", action="store_true", help="Save output to JSON file in output/ directory")
         parser.add_argument("-txt", "--save-txt", action="store_true", help="Save per-device output to text files in output/ directory")
         parser.add_argument("-w", "--workers", type=int, default=16, help="Number of parallel device connections")
+        parser.add_argument("-s", "--output-structure", choices=["option1", "option2"], default="option1", 
+                           help="Output folder structure: option1 (yyyymmdd_hhmmss/name.json) or option2 (name_yyyymmdd_hhmmss.json)")
         args = parser.parse_args()
 
     inname = Path(args.input).stem
     outname = args.outname if args.outname is not None else inname
 
-    setup_logging(verbose=args.verbose, log_suffix=inname)
+    setup_logging(verbose=args.verbose)
     logger = logging.getLogger(__name__)
 
-    output_dir = os.path.join(OUTPUT_DIR_FULL, f"{outname}_{DATETIME}") if args.save_txt else ""
     if args.save_txt:
+        if args.output_structure == "option1":
+            output_dir = os.path.join(OUTPUT_DIR_FULL, DATETIME, outname)
+        else:  # option2
+            output_dir = os.path.join(OUTPUT_DIR_FULL, f"{outname}_{DATETIME}")
         os.makedirs(output_dir, exist_ok=True)
         logger.info(f"Output directory created: {output_dir}")
+    else:
+        output_dir = ""
 
     devices = read_devices(args.input)
 
@@ -249,7 +261,7 @@ def main(args=None):
     )
 
     if args.save_json:
-        save_json_output(result, outname, DATETIME)
+        save_json_output(result, outname, DATETIME, args.output_structure)
 
 if __name__ == "__main__":
     main()
