@@ -1,6 +1,4 @@
 ter len 0
-show xxx
 show run view full
 show version
-show yyy
 exit

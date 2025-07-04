@@ -1,8 +1,8 @@
 # user define
 config/device_empf_*.csv
-config/empf*.csv
-output/empf*
-output/*/empf*
+config/*empf*
+output/*empf*
+output/*/*empf*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
