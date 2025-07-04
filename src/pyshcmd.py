@@ -10,9 +10,9 @@ import csv
 import json
 import argparse
 from pathlib import Path
-from netmiko import ConnectHandler, NetMikoAuthenticationException, NetmikoTimeoutException
-version = '20250627'
-# Fixed --output-structure: option1 (timestamp/name), option2 (name_timestamp); removed run_batch_mp.py; single log file pyshcmd_<timestamp>.log (20250627_1454)
+from netmiko import ConnectHandler, NetMikoAuthenticationException, NetmikoTimeoutException, SSHDetect
+version = '20250704'
+# Fixed --output-structure: option1 (timestamp/name), option2 (name_timestamp); removed run_batch_mp.py; single log file pyshcmd_<timestamp>.log; added Netmiko device type autodetection with report_<batch>_<timestamp>.txt; fixed SSHDetect context manager issue; updated log message and report to include input and detected device types; added connection status; removed failed commands from report; renamed connection_report to report_<batch>_<timestamp>.txt; added device count to report (20250704_1201)
 
 # Global variables for directory paths and logging
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -86,6 +86,30 @@ def read_commands(commands_file):
         logger.error(f"Error reading {commands_path}: {str(e)}")
         return []
 
+# Autodetect device type using Netmiko's SSHDetect
+def autodetect_device_type(device_dict):
+    logger = logging.getLogger(__name__)
+    ip = device_dict.get("ip", "Unknown")
+    try:
+        temp_device = {
+            "device_type": "autodetect",
+            "ip": str(device_dict["ip"]),
+            "username": device_dict["username"],
+            "password": device_dict["password"],
+            "port": device_dict["port"]
+        }
+        detector = SSHDetect(**temp_device)
+        detected_type = detector.autodetect()
+        if detected_type:
+            logger.info(f"Autodetected device type for {ip}: {detected_type}")
+            return detected_type
+        else:
+            logger.error(f"Failed to autodetect device type for {ip}: No matching device type found")
+            return None
+    except Exception as e:
+        logger.error(f"Failed to autodetect device type for {ip}: {str(e)}")
+        return None
+
 # Read devices from a CSV file
 def read_devices(csv_file):
     logger = logging.getLogger(__name__)
@@ -108,7 +132,7 @@ def read_devices(csv_file):
                     "ip": row["ip"],
                     "port": int(row["port"]),
                     "cmdfile": row["cmdfile"],
-                    "device_type": row.get("device_type", "cisco_ios")
+                    "device_type": row.get("device_type", "")
                 }
                 cmd_file_path = os.path.join(CMD_DIR_FULL, device["cmdfile"])
                 if not os.path.isfile(cmd_file_path):
@@ -132,16 +156,56 @@ def read_devices(csv_file):
         logger.error(f"Error reading {csv_path}: {str(e)}")
         sys.exit(1)
 
-# Execute commands on a single device
-def execute_commands(device_dict, output_dir, save_txt):
+# Save connection report including device types, connection status, and device count
+def save_connection_report(detected_types, output_base, timestamp, output_structure):
     logger = logging.getLogger(__name__)
-    start_msg = "===> {} Connection: {}"
+    os.makedirs(OUTPUT_DIR_FULL, exist_ok=True)
+    if output_structure == "option1":
+        os.makedirs(os.path.join(OUTPUT_DIR_FULL, timestamp), exist_ok=True)
+        filename = os.path.join(OUTPUT_DIR_FULL, timestamp, f"report_{output_base}.txt")
+    else:  # option2
+        filename = os.path.join(OUTPUT_DIR_FULL, f"report_{output_base}_{timestamp}.txt")
+    try:
+        with open(filename, "w") as f:
+            f.write(f"Device Connection Report\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Number of device: {len(detected_types)}\n")
+            f.write(f"Batch: {output_base}\n\n")
+            f.write(f"{'IP':<16} {'Hostname':<20} {'Input Device Type':<20} {'Detected Device Type':<20} {'Connection':<12}\n")
+            f.write("-" * 80 + "\n")
+            for ip, (hostname, input_type, detected_type, connection_status, _) in detected_types.items():
+                f.write(f"{ip:<16} {hostname:<20} {input_type or 'None':<20} {detected_type or 'Failed':<20} {connection_status:<12}\n")
+        logger.info(f"Connection report saved to {filename}")
+    except OSError as e:
+        logger.error(f"Error saving connection report to {filename}: {str(e)}")
+
+# Execute commands on a single device
+def execute_commands(device_dict, output_dir, save_txt, detected_types):
+    logger = logging.getLogger(__name__)
+    start_msg = "===> {} Connection: {} | hostname: {} | input device type: {}, Detected Device Type: {}"
     received_msg = "<=== {} Received: {} for command: {}"
     ip = device_dict.get("ip", "Unknown")
     hostname = device_dict.get("hostname", ip)
+    input_device_type = device_dict.get("device_type", "")
     results = {}
+    failed_commands = []
+    connection_status = "Failed"
     
-    logger.info(start_msg.format(datetime.now().time(), ip))
+    # Perform autodetection if device_type is empty
+    if not input_device_type:
+        detected_type = autodetect_device_type(device_dict)
+        if detected_type:
+            device_dict["device_type"] = detected_type
+            detected_types[ip] = (hostname, input_device_type, detected_type, connection_status, failed_commands)
+        else:
+            logger.error(f"Skipping {ip} due to failed device type autodetection")
+            detected_types[ip] = (hostname, input_device_type, None, connection_status, failed_commands)
+            return {ip: {}}
+    else:
+        detected_types[ip] = (hostname, input_device_type, input_device_type, connection_status, failed_commands)
+    
+    device_type = device_dict["device_type"]
+    logger.info(start_msg.format(datetime.now().strftime("%H:%M:%S.%f")[:-3], ip, hostname, input_device_type or "None", device_type or "Failed"))
 
     commands = read_commands(device_dict["cmdfile"])
     if not commands:
@@ -157,6 +221,8 @@ def execute_commands(device_dict, output_dir, save_txt):
             port=device_dict["port"]
         ) as ssh:
             ssh.enable()
+            connection_status = "Success"
+            detected_types[ip] = (hostname, input_device_type, device_type, connection_status, failed_commands)
             for command in commands:
                 try:
                     output = ssh.send_command(command)
@@ -164,13 +230,15 @@ def execute_commands(device_dict, output_dir, save_txt):
                     logger.debug(received_msg.format(datetime.now().time(), ip, command))
                 except Exception as e:
                     logger.error(f"Failed to execute '{command}' on {ip}: {str(e)}")
+                    failed_commands.append(command)
                     results[command] = f"Error: {str(e)}"
+            detected_types[ip] = (hostname, input_device_type, device_type, connection_status, failed_commands)
         
         if save_txt:
             filename = os.path.join(output_dir, f"{hostname}.txt")
             try:
                 with open(filename, "w") as f:
-                    f.write(f"##### OUTPUT FOR {ip} {hostname}\n")
+                    f.write(f"##### OUTPUT FOR {ip} {hostname} ({device_type})\n")
                     f.write(f"##### WILL EXECUTE:\n")
                     for command in commands:
                         f.write(f"{command}\n")
@@ -184,16 +252,18 @@ def execute_commands(device_dict, output_dir, save_txt):
         return {ip: results}
     except (NetMikoAuthenticationException, NetmikoTimeoutException) as e:
         logger.error(f"Failed to connect to {ip}: {str(e)}")
+        detected_types[ip] = (hostname, input_device_type, device_type, connection_status, failed_commands)
         return {ip: {cmd: f"Error: {str(e)}" for cmd in commands}}
 
 # Send commands to multiple devices
 def send_command_to_devices(devices, max_workers=4, output_dir="", save_txt=False):
     logger = logging.getLogger(__name__)
     data = {}
+    detected_types = {}
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_list = [
-            executor.submit(execute_commands, device, output_dir, save_txt)
+            executor.submit(execute_commands, device, output_dir, save_txt, detected_types)
             for device in devices
         ]
         logger.debug(f"Submitted {len(future_list)} tasks to executor")
@@ -206,7 +276,7 @@ def send_command_to_devices(devices, max_workers=4, output_dir="", save_txt=Fals
             except Exception as e:
                 logger.error(f"Unexpected error: {str(e)}")
     
-    return data
+    return data, detected_types
 
 # Save output to JSON
 def save_json_output(data, output_base, timestamp, output_structure):
@@ -227,7 +297,7 @@ def save_json_output(data, output_base, timestamp, output_structure):
 @count_time
 def main(args=None):
     if args is None:
-        parser = argparse.ArgumentParser(description="Execute commands on network devices with configurable output structure")
+        parser = argparse.ArgumentParser(description="Execute commands on network devices with configurable output structure and device type autodetection")
         parser.add_argument("-i", "--input", required=True, help="CSV file name as input in config/ directory")
         parser.add_argument("-o", "--outname", default=None, help="Base name for output folder and JSON file")
         parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
@@ -256,9 +326,12 @@ def main(args=None):
 
     devices = read_devices(args.input)
 
-    result = send_command_to_devices(
+    result, detected_types = send_command_to_devices(
         devices, max_workers=args.workers, output_dir=output_dir, save_txt=args.save_txt
     )
+
+    if detected_types:
+        save_connection_report(detected_types, outname, DATETIME, args.output_structure)
 
     if args.save_json:
         save_json_output(result, outname, DATETIME, args.output_structure)

@@ -1,0 +1,15 @@
+Device Connection Report
+Generated: 2025-07-04 12:06:02
+Number of device: 8
+Batch: empf_pnp_cios_ibsbgp
+
+IP               Hostname             Input Device Type    Detected Device Type Connection  
+--------------------------------------------------------------------------------
+172.31.210.11    n1pnecint1301        None                 cisco_xe             Success     
+172.31.210.12    n1pnecint1401        None                 cisco_xe             Success     
+172.31.120.12    p2pnecint1601        None                 cisco_xe             Success     
+172.31.220.11    n2pnecint1301        None                 cisco_xe             Success     
+172.31.110.12    p1pnecint1601        None                 cisco_xe             Success     
+172.31.120.11    p2pnecint1501        None                 cisco_xe             Success     
+172.31.110.11    p1pnecint1501        None                 cisco_xe             Success     
+172.31.220.12    n2pnecint1401        None                 cisco_xe             Success     

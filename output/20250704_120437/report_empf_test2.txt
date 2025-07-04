@@ -1,0 +1,10 @@
+Device Connection Report
+Generated: 2025-07-04 12:04:53
+Number of device: 3
+Batch: empf_test2
+
+IP               Hostname             Input Device Type    Detected Device Type Connection  
+--------------------------------------------------------------------------------
+172.31.210.13    n1pnecint1302        cisco_xe             cisco_xe             Success     
+172.31.219.99    n1testswitch1        None                 Failed               Failed      
+172.31.210.11    n1pnecint1301        None                 cisco_xe             Success     
