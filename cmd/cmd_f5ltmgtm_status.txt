@@ -1,0 +1,17 @@
+modify cli preference pager disabled display-threshold 0
+f5mku -K
+show sys version
+show sys hardware
+list net interface serial
+show net interface
+show cm device-group
+show cm sync-status
+show cm failover-status
+show sys performance throughput historical
+show sys cpu
+show sys license
+list sys software image
+show sys software status
+show net interface -hidden
+show ltm pool members field-fmt | grep "ltm pool\|addr\|monitor-status"
+quit

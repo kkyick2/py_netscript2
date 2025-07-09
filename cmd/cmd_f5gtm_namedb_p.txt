@@ -1,0 +1,29 @@
+bash
+ll /var/named/config/namedb/
+
+
+cat /var/named/config/namedb/db.external.142.184.203.in-addr.arpa.
+
+
+cat /var/named/config/namedb/db.external.239.128.202.in-addr.arpa.
+
+
+cat /var/named/config/namedb/db.external.245.128.202.in-addr.arpa.
+
+
+cat /var/named/config/namedb/db.external.248.128.202.in-addr.arpa.
+
+
+cat /var/named/config/namedb/db.external.e-mpf.org.hk.
+
+
+cat /var/named/config/namedb/db.external.empf.org.hk.
+
+
+cat /var/named/config/namedb/db.external.empf.org.hk.in-addr.arpa.
+
+
+exit
+
+quit
+

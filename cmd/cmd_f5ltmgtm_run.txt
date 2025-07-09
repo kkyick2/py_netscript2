@@ -1,0 +1,4 @@
+modify cli preference pager disabled display-threshold 0
+show running-config
+show sys version
+quit

@@ -11,8 +11,8 @@ import json
 import argparse
 from pathlib import Path
 from netmiko import ConnectHandler, NetMikoAuthenticationException, NetmikoTimeoutException, SSHDetect
-version = '20250704'
-# Fixed --output-structure: option1 (timestamp/name), option2 (name_timestamp); removed run_batch_mp.py; single log file pyshcmd_<timestamp>.log; added Netmiko device type autodetection with report_<batch>_<timestamp>.txt; fixed SSHDetect context manager issue; updated log message and report to include input and detected device types; added connection status; removed failed commands from report; renamed connection_report to report_<batch>_<timestamp>.txt; added device count to report (20250704_1201)
+version = '20250709'
+# Fixed --output-structure: option1 (timestamp/name), option2 (name_timestamp); removed run_batch_mp.py; single log file pyshcmd_<timestamp>.log; added Netmiko device type autodetection with report_<batch>_<timestamp>.txt; fixed SSHDetect context manager issue; updated log message and report to include input and detected device types; added connection status; removed failed commands from report; renamed connection_report to report_<batch>_<timestamp>.txt; added device count to report; moved report to report/ directory (20250709_1548)
 
 # Global variables for directory paths and logging
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -23,6 +23,8 @@ CONFIG_DIR = 'config'
 CONFIG_DIR_FULL = os.path.join(PARENT_DIR, CONFIG_DIR)
 OUTPUT_DIR = 'output'
 OUTPUT_DIR_FULL = os.path.join(PARENT_DIR, OUTPUT_DIR)
+REPORT_DIR = 'report'
+REPORT_DIR_FULL = os.path.join(PARENT_DIR, REPORT_DIR)
 CMD_DIR = 'cmd'
 CMD_DIR_FULL = os.path.join(PARENT_DIR, CMD_DIR)
 DATETIME = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -159,12 +161,8 @@ def read_devices(csv_file):
 # Save connection report including device types, connection status, and device count
 def save_connection_report(detected_types, output_base, timestamp, output_structure):
     logger = logging.getLogger(__name__)
-    os.makedirs(OUTPUT_DIR_FULL, exist_ok=True)
-    if output_structure == "option1":
-        os.makedirs(os.path.join(OUTPUT_DIR_FULL, timestamp), exist_ok=True)
-        filename = os.path.join(OUTPUT_DIR_FULL, timestamp, f"report_{output_base}.txt")
-    else:  # option2
-        filename = os.path.join(OUTPUT_DIR_FULL, f"report_{output_base}_{timestamp}.txt")
+    os.makedirs(REPORT_DIR_FULL, exist_ok=True)
+    filename = os.path.join(REPORT_DIR_FULL, f"report_{output_base}_{timestamp}.txt")
     try:
         with open(filename, "w") as f:
             f.write(f"Device Connection Report\n")

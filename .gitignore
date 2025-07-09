@@ -3,6 +3,7 @@ config/device_empf_*.csv
 config/*empf*
 output/*empf*
 output/*/*empf*
+report/*empf*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
